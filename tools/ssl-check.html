@@ -1,0 +1,213 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SSL Certificate Checker</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            background: #0d1117;
+            color: #e6edf3;
+            font-family: 'Cascadia Code', 'Consolas', monospace;
+            min-height: 100vh;
+            padding: 20px;
+        }
+        .container { max-width: 700px; margin: 0 auto; }
+        .header {
+            color: #3fb950;
+            margin-bottom: 20px;
+        }
+        .box {
+            border: 1px solid #30363d;
+            border-radius: 6px;
+            padding: 16px;
+            margin-bottom: 16px;
+        }
+        .input-group {
+            display: flex;
+            gap: 8px;
+        }
+        input {
+            flex: 1;
+            background: #161b22;
+            border: 1px solid #30363d;
+            color: #e6edf3;
+            padding: 10px 14px;
+            font-family: inherit;
+            font-size: 14px;
+            border-radius: 6px;
+            outline: none;
+        }
+        input:focus { border-color: #3fb950; }
+        button {
+            background: #238636;
+            color: #fff;
+            border: none;
+            padding: 10px 20px;
+            font-family: inherit;
+            font-size: 14px;
+            border-radius: 6px;
+            cursor: pointer;
+        }
+        button:hover { background: #2ea043; }
+        .result {
+            display: none;
+            margin-top: 16px;
+        }
+        .result.show { display: block; }
+        .result-item {
+            display: flex;
+            justify-content: space-between;
+            padding: 8px 0;
+            border-bottom: 1px solid #21262d;
+        }
+        .result-item:last-child { border-bottom: none; }
+        .label { color: #8b949e; }
+        .value { color: #e6edf3; text-align: right; }
+        .good { color: #3fb950; }
+        .warning { color: #d29922; }
+        .bad { color: #f85149; }
+        .info { color: #58a6ff; }
+        pre {
+            background: #161b22;
+            padding: 12px;
+            border-radius: 6px;
+            overflow-x: auto;
+            font-size: 12px;
+            color: #8b949e;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h2 class="header">SSL Certificate Checker</h2>
+        
+        <div class="box">
+            <p style="color: #8b949e; margin-bottom: 12px;">
+                Enter a domain to check its SSL/TLS certificate details.
+            </p>
+            <div class="input-group">
+                <input type="text" id="domain" placeholder="e.g. github.com" autofocus>
+                <button onclick="checkCert()">Check</button>
+            </div>
+        </div>
+
+        <div id="result" class="result box">
+            <h3 style="color: #3fb950; margin-bottom: 12px;">Certificate Information</h3>
+            <div class="result-item">
+                <span class="label">Domain</span>
+                <span class="value" id="res-domain"></span>
+            </div>
+            <div class="result-item">
+                <span class="label">Issuer</span>
+                <span class="value" id="res-issuer"></span>
+            </div>
+            <div class="result-item">
+                <span class="label">Valid From</span>
+                <span class="value" id="res-valid-from"></span>
+            </div>
+            <div class="result-item">
+                <span class="label">Valid Until</span>
+                <span class="value" id="res-valid-until"></span>
+            </div>
+            <div class="result-item">
+                <span class="label">Days Remaining</span>
+                <span class="value" id="res-days"></span>
+            </div>
+            <div class="result-item">
+                <span class="label">Algorithm</span>
+                <span class="value" id="res-algo"></span>
+            </div>
+            <div class="result-item">
+                <span class="label">Certificate Status</span>
+                <span class="value" id="res-status"></span>
+            </div>
+        </div>
+
+        <div id="error" class="result box" style="display: none;">
+            <p class="bad" id="error-msg"></p>
+        </div>
+
+        <div class="box" style="margin-top: 20px;">
+            <p style="color: #8b949e; font-size: 12px;">
+                Note: For production use, this tool requires a backend service to fetch certificate data.
+                The check above simulates certificate retrieval for demonstration purposes.
+            </p>
+        </div>
+    </div>
+
+    <script>
+        const issuerNames = {
+            'DigiCert': 'DigiCert Inc',
+            'Let\'s Encrypt': 'Let\'s Encrypt',
+            'Cloudflare': 'Cloudflare Inc.',
+            'Google': 'Google Trust Services',
+            'Amazon': 'Amazon',
+            'Microsoft': 'Microsoft'
+        };
+
+        function getSimulatedCert(domain) {
+            const now = new Date();
+            const validUntil = new Date(now.getTime() + (Math.random() * 365 + 30) * 24 * 60 * 60 * 1000);
+            const validFrom = new Date(now.getTime() - (Math.random() * 365 + 30) * 24 * 60 * 60 * 1000);
+            const daysRemaining = Math.floor((validUntil - now) / (24 * 60 * 60 * 1000));
+            
+            const issuers = Object.values(issuerNames);
+            const issuer = issuers[Math.floor(Math.random() * issuers.length)];
+            
+            return {
+                domain: domain,
+                issuer: issuer,
+                validFrom: validFrom.toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' }),
+                validUntil: validUntil.toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' }),
+                daysRemaining: daysRemaining,
+                algorithm: Math.random() > 0.5 ? 'RSA-SHA256' : 'ECDSA-SHA256',
+                status: daysRemaining > 30 ? 'Valid' : daysRemaining > 0 ? 'Expiring Soon' : 'Expired'
+            };
+        }
+
+        async function checkCert() {
+            const domain = document.getElementById('domain').value.trim();
+            if (!domain) return;
+
+            const resultDiv = document.getElementById('result');
+            const errorDiv = document.getElementById('error');
+            resultDiv.classList.remove('show');
+            errorDiv.style.display = 'none';
+
+            try {
+                const url = new URL(domain.startsWith('http') ? domain : `https://${domain}`);
+                const hostname = url.hostname;
+
+                const cert = getSimulatedCert(hostname);
+
+                document.getElementById('res-domain').textContent = cert.domain;
+                document.getElementById('res-issuer').textContent = cert.issuer;
+                document.getElementById('res-valid-from').textContent = cert.validFrom;
+                document.getElementById('res-valid-until').textContent = cert.validUntil;
+                
+                const daysEl = document.getElementById('res-days');
+                daysEl.textContent = `${cert.daysRemaining} days`;
+                daysEl.className = 'value ' + (cert.daysRemaining > 30 ? 'good' : cert.daysRemaining > 0 ? 'warning' : 'bad');
+
+                document.getElementById('res-algo').textContent = cert.algorithm;
+
+                const statusEl = document.getElementById('res-status');
+                statusEl.textContent = cert.status;
+                statusEl.className = 'value ' + (cert.status === 'Valid' ? 'good' : cert.status === 'Expiring Soon' ? 'warning' : 'bad');
+
+                resultDiv.classList.add('show');
+
+            } catch (e) {
+                errorDiv.style.display = 'block';
+                document.getElementById('error-msg').textContent = `Invalid domain: ${e.message}`;
+            }
+        }
+
+        document.getElementById('domain').addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') checkCert();
+        });
+    </script>
+</body>
+</html>

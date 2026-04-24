@@ -1,0 +1,447 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>IT Inventory Tracker</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            background: #0d1117;
+            color: #e6edf3;
+            font-family: 'Cascadia Code', 'Consolas', monospace;
+            min-height: 100vh;
+            padding: 20px;
+        }
+        .container { max-width: 1200px; margin: 0 auto; }
+        h2 { color: #3fb950; margin-bottom: 20px; }
+        .grid { display: grid; grid-template-columns: 350px 1fr; gap: 16px; }
+        .box {
+            background: #161b22;
+            border: 1px solid #30363d;
+            border-radius: 6px;
+            padding: 16px;
+            margin-bottom: 16px;
+        }
+        label {
+            display: block;
+            color: #8b949e;
+            font-size: 12px;
+            margin-bottom: 6px;
+        }
+        input, select, textarea {
+            width: 100%;
+            background: #0d1117;
+            border: 1px solid #30363d;
+            color: #e6edf3;
+            padding: 8px 12px;
+            font-family: inherit;
+            font-size: 13px;
+            border-radius: 6px;
+            margin-bottom: 10px;
+            outline: none;
+        }
+        input:focus, select:focus, textarea:focus { border-color: #3fb950; }
+        button {
+            background: #238636;
+            color: #fff;
+            border: none;
+            padding: 10px 16px;
+            font-family: inherit;
+            font-size: 13px;
+            border-radius: 6px;
+            cursor: pointer;
+            width: 100%;
+            margin-top: 8px;
+        }
+        button:hover { background: #2ea043; }
+        button.secondary {
+            background: #30363d;
+        }
+        button.secondary:hover { background: #484f58; }
+        .status-tag {
+            display: inline-block;
+            padding: 2px 8px;
+            border-radius: 12px;
+            font-size: 11px;
+        }
+        .status-tag.active { background: rgba(63, 185, 80, 0.2); color: #3fb950; }
+        .status-tag.inactive { background: rgba(139, 148, 158, 0.2); color: #8b949e; }
+        .status-tag.maintenance { background: rgba(210, 153, 34, 0.2); color: #d29922; }
+        .status-tag.retired { background: rgba(248, 81, 73, 0.2); color: #f85149; }
+        .type-tag {
+            display: inline-block;
+            padding: 2px 8px;
+            border-radius: 4px;
+            font-size: 11px;
+            background: #21262d;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 12px;
+        }
+        th {
+            text-align: left;
+            color: #8b949e;
+            padding: 8px;
+            border-bottom: 1px solid #30363d;
+            position: sticky;
+            top: 0;
+            background: #161b22;
+        }
+        td {
+            padding: 8px;
+            border-bottom: 1px solid #21262d;
+        }
+        tr:hover td { background: #21262d; }
+        .actions {
+            display: flex;
+            gap: 6px;
+        }
+        .actions button {
+            width: auto;
+            padding: 4px 8px;
+            font-size: 11px;
+            margin: 0;
+        }
+        .actions button.delete {
+            background: transparent;
+            color: #f85149;
+            border: 1px solid #f85149;
+        }
+        .actions button.delete:hover {
+            background: #f85149;
+            color: #fff;
+        }
+        .search-bar {
+            display: flex;
+            gap: 8px;
+            margin-bottom: 12px;
+        }
+        .search-bar input { margin-bottom: 0; }
+        .stats {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 12px;
+            margin-bottom: 16px;
+        }
+        .stat {
+            background: #161b22;
+            border: 1px solid #30363d;
+            border-radius: 6px;
+            padding: 12px;
+            text-align: center;
+        }
+        .stat-value { font-size: 24px; font-weight: bold; color: #3fb950; }
+        .stat-value.inactive { color: #8b949e; }
+        .stat-value.maintenance { color: #d29922; }
+        .stat-value.retired { color: #f85149; }
+        .stat-label { font-size: 11px; color: #8b949e; margin-top: 4px; }
+        .filter-buttons {
+            display: flex;
+            gap: 6px;
+            flex-wrap: wrap;
+            margin-bottom: 12px;
+        }
+        .filter-btn {
+            background: #21262d;
+            color: #8b949e;
+            border: 1px solid #30363d;
+            padding: 6px 12px;
+            font-size: 11px;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        .filter-btn:hover, .filter-btn.active {
+            background: #30363d;
+            color: #e6edf3;
+        }
+        .table-container {
+            max-height: 400px;
+            overflow: auto;
+        }
+        .empty-state {
+            text-align: center;
+            padding: 40px;
+            color: #8b949e;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h2>IT Inventory Tracker</h2>
+        
+        <div class="stats">
+            <div class="stat">
+                <div class="stat-value" id="stat-total">0</div>
+                <div class="stat-label">Total Assets</div>
+            </div>
+            <div class="stat">
+                <div class="stat-value" id="stat-active">0</div>
+                <div class="stat-label">Active</div>
+            </div>
+            <div class="stat">
+                <div class="stat-value maintenance" id="stat-maintenance">0</div>
+                <div class="stat-label">Maintenance</div>
+            </div>
+            <div class="stat">
+                <div class="stat-value retired" id="stat-retired">0</div>
+                <div class="stat-label">Retired</div>
+            </div>
+        </div>
+
+        <div class="grid">
+            <div class="box">
+                <h3 style="color: #3fb950; margin-bottom: 16px;">Add / Edit Asset</h3>
+                <input type="hidden" id="editId">
+                <div>
+                    <label>Asset Name *</label>
+                    <input type="text" id="name" placeholder="e.g. Dell OptiPlex 7090">
+                </div>
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px;">
+                    <div>
+                        <label>Type</label>
+                        <select id="type">
+                            <option value="workstation">Workstation</option>
+                            <option value="laptop">Laptop</option>
+                            <option value="server">Server</option>
+                            <option value="network">Network Device</option>
+                            <option value="printer">Printer</option>
+                            <option value="peripheral">Peripheral</option>
+                            <option value="other">Other</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label>Status</label>
+                        <select id="status">
+                            <option value="active">Active</option>
+                            <option value="inactive">Inactive</option>
+                            <option value="maintenance">Maintenance</option>
+                            <option value="retired">Retired</option>
+                        </select>
+                    </div>
+                </div>
+                <div>
+                    <label>Serial Number</label>
+                    <input type="text" id="serial" placeholder="e.g. SN-12345678">
+                </div>
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px;">
+                    <div>
+                        <label>Location</label>
+                        <input type="text" id="location" placeholder="e.g. Office 1A">
+                    </div>
+                    <div>
+                        <label>Assigned To</label>
+                        <input type="text" id="assigned" placeholder="e.g. John Doe">
+                    </div>
+                </div>
+                <div>
+                    <label>IP Address</label>
+                    <input type="text" id="ip" placeholder="e.g. 192.168.1.100">
+                </div>
+                <div>
+                    <label>Purchase Date</label>
+                    <input type="date" id="purchaseDate">
+                </div>
+                <div>
+                    <label>Notes</label>
+                    <textarea id="notes" rows="2" placeholder="Additional notes..."></textarea>
+                </div>
+                <button onclick="saveAsset()">Save Asset</button>
+                <button class="secondary" onclick="clearForm()">Clear Form</button>
+            </div>
+
+            <div>
+                <div class="box">
+                    <div class="search-bar">
+                        <input type="text" id="search" placeholder="Search assets..." oninput="filterTable()">
+                    </div>
+                    <div class="filter-buttons">
+                        <button class="filter-btn active" onclick="setFilter('all')">All</button>
+                        <button class="filter-btn" onclick="setFilter('active')">Active</button>
+                        <button class="filter-btn" onclick="setFilter('maintenance')">Maintenance</button>
+                        <button class="filter-btn" onclick="setFilter('retired')">Retired</button>
+                        <button class="filter-btn" onclick="setFilter('workstation')">Workstations</button>
+                        <button class="filter-btn" onclick="setFilter('server')">Servers</button>
+                        <button class="filter-btn" onclick="setFilter('network')">Network</button>
+                    </div>
+                </div>
+
+                <div class="box table-container">
+                    <table id="assetTable">
+                        <thead>
+                            <tr>
+                                <th>Name</th>
+                                <th>Type</th>
+                                <th>Status</th>
+                                <th>Location</th>
+                                <th>Assigned To</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="tbody"></tbody>
+                    </table>
+                    <div class="empty-state" id="empty-state" style="display: none;">
+                        <p>No assets found. Add your first asset using the form.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let assets = JSON.parse(localStorage.getItem('inventory') || '[]');
+        let currentFilter = 'all';
+        let editId = null;
+
+        function saveAsset() {
+            const name = document.getElementById('name').value.trim();
+            if (!name) {
+                alert('Asset name is required');
+                return;
+            }
+
+            const asset = {
+                id: editId || Date.now(),
+                name,
+                type: document.getElementById('type').value,
+                status: document.getElementById('status').value,
+                serial: document.getElementById('serial').value,
+                location: document.getElementById('location').value,
+                assigned: document.getElementById('assigned').value,
+                ip: document.getElementById('ip').value,
+                purchaseDate: document.getElementById('purchaseDate').value,
+                notes: document.getElementById('notes').value
+            };
+
+            if (editId) {
+                const idx = assets.findIndex(a => a.id === editId);
+                if (idx !== -1) assets[idx] = asset;
+            } else {
+                assets.push(asset);
+            }
+
+            localStorage.setItem('inventory', JSON.stringify(assets));
+            clearForm();
+            renderTable();
+            updateStats();
+        }
+
+        function deleteAsset(id) {
+            if (confirm('Delete this asset?')) {
+                assets = assets.filter(a => a.id !== id);
+                localStorage.setItem('inventory', JSON.stringify(assets));
+                renderTable();
+                updateStats();
+            }
+        }
+
+        function editAsset(id) {
+            const asset = assets.find(a => a.id === id);
+            if (!asset) return;
+
+            document.getElementById('editId').value = id;
+            editId = id;
+            document.getElementById('name').value = asset.name;
+            document.getElementById('type').value = asset.type;
+            document.getElementById('status').value = asset.status;
+            document.getElementById('serial').value = asset.serial || '';
+            document.getElementById('location').value = asset.location || '';
+            document.getElementById('assigned').value = asset.assigned || '';
+            document.getElementById('ip').value = asset.ip || '';
+            document.getElementById('purchaseDate').value = asset.purchaseDate || '';
+            document.getElementById('notes').value = asset.notes || '';
+        }
+
+        function clearForm() {
+            document.getElementById('editId').value = '';
+            document.getElementById('name').value = '';
+            document.getElementById('type').value = 'workstation';
+            document.getElementById('status').value = 'active';
+            document.getElementById('serial').value = '';
+            document.getElementById('location').value = '';
+            document.getElementById('assigned').value = '';
+            document.getElementById('ip').value = '';
+            document.getElementById('purchaseDate').value = '';
+            document.getElementById('notes').value = '';
+            editId = null;
+        }
+
+        function setFilter(filter) {
+            currentFilter = filter;
+            document.querySelectorAll('.filter-btn').forEach(btn => {
+                btn.classList.toggle('active', btn.textContent.toLowerCase() === filter || 
+                    (filter === 'all' && btn.textContent === 'All'));
+            });
+            renderTable();
+        }
+
+        function filterTable() {
+            renderTable();
+        }
+
+        function renderTable() {
+            const search = document.getElementById('search').value.toLowerCase();
+            let filtered = assets;
+
+            if (currentFilter !== 'all') {
+                filtered = filtered.filter(a => {
+                    if (['active', 'inactive', 'maintenance', 'retired'].includes(currentFilter)) {
+                        return a.status === currentFilter;
+                    }
+                    return a.type === currentFilter;
+                });
+            }
+
+            if (search) {
+                filtered = filtered.filter(a => 
+                    a.name.toLowerCase().includes(search) ||
+                    (a.serial && a.serial.toLowerCase().includes(search)) ||
+                    (a.location && a.location.toLowerCase().includes(search)) ||
+                    (a.assigned && a.assigned.toLowerCase().includes(search))
+                );
+            }
+
+            const tbody = document.getElementById('tbody');
+            const emptyState = document.getElementById('empty-state');
+
+            if (filtered.length === 0) {
+                tbody.innerHTML = '';
+                emptyState.style.display = 'block';
+            } else {
+                emptyState.style.display = 'none';
+                tbody.innerHTML = filtered.map(a => `
+                    <tr>
+                        <td>${escapeHtml(a.name)}</td>
+                        <td><span class="type-tag">${a.type}</span></td>
+                        <td><span class="status-tag ${a.status}">${a.status}</span></td>
+                        <td>${escapeHtml(a.location || '-')}</td>
+                        <td>${escapeHtml(a.assigned || '-')}</td>
+                        <td class="actions">
+                            <button onclick="editAsset(${a.id})">Edit</button>
+                            <button class="delete" onclick="deleteAsset(${a.id})">Del</button>
+                        </td>
+                    </tr>
+                `).join('');
+            }
+        }
+
+        function updateStats() {
+            document.getElementById('stat-total').textContent = assets.length;
+            document.getElementById('stat-active').textContent = assets.filter(a => a.status === 'active').length;
+            document.getElementById('stat-maintenance').textContent = assets.filter(a => a.status === 'maintenance').length;
+            document.getElementById('stat-retired').textContent = assets.filter(a => a.status === 'retired').length;
+        }
+
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
+        renderTable();
+        updateStats();
+    </script>
+</body>
+</html>

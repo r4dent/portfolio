@@ -1,0 +1,298 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Log Parser</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            background: #0d1117;
+            color: #e6edf3;
+            font-family: 'Cascadia Code', 'Consolas', monospace;
+            min-height: 100vh;
+            padding: 20px;
+        }
+        .container { max-width: 900px; margin: 0 auto; }
+        h2 { color: #3fb950; margin-bottom: 20px; }
+        .box {
+            background: #161b22;
+            border: 1px solid #30363d;
+            border-radius: 6px;
+            padding: 16px;
+            margin-bottom: 16px;
+        }
+        textarea {
+            width: 100%;
+            min-height: 200px;
+            background: #0d1117;
+            border: 1px solid #30363d;
+            color: #e6edf3;
+            font-family: inherit;
+            font-size: 13px;
+            padding: 12px;
+            border-radius: 6px;
+            resize: vertical;
+            outline: none;
+        }
+        textarea:focus { border-color: #3fb950; }
+        textarea::placeholder { color: #484f58; }
+        .controls {
+            display: flex;
+            gap: 8px;
+            margin-top: 12px;
+            flex-wrap: wrap;
+        }
+        button {
+            background: #238636;
+            color: #fff;
+            border: none;
+            padding: 10px 20px;
+            font-family: inherit;
+            font-size: 14px;
+            border-radius: 6px;
+            cursor: pointer;
+        }
+        button:hover { background: #2ea043; }
+        button.secondary {
+            background: #30363d;
+        }
+        button.secondary:hover { background: #484f58; }
+        .output {
+            font-size: 12px;
+            line-height: 1.8;
+            max-height: 400px;
+            overflow: auto;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+        }
+        .stats {
+            display: flex;
+            gap: 20px;
+            margin-bottom: 12px;
+            flex-wrap: wrap;
+        }
+        .stat {
+            background: #0d1117;
+            padding: 8px 12px;
+            border-radius: 4px;
+        }
+        .stat-label { color: #8b949e; font-size: 12px; }
+        .stat-value { color: #e6edf3; font-size: 18px; font-weight: bold; }
+        .stat-value.error { color: #f85149; }
+        .stat-value.warning { color: #d29922; }
+        .stat-value.info { color: #58a6ff; }
+        .log-line { padding: 2px 8px; border-radius: 3px; }
+        .log-line.error { background: rgba(248, 81, 73, 0.15); color: #f85149; }
+        .log-line.warning { background: rgba(210, 153, 34, 0.15); color: #d29922; }
+        .log-line.info { background: rgba(88, 166, 255, 0.1); color: #58a6ff; }
+        .log-line.debug { color: #8b949e; }
+        .log-line.success { color: #3fb950; }
+        .line-num { color: #484f58; margin-right: 12px; }
+        .search-group {
+            display: flex;
+            gap: 8px;
+            margin-bottom: 12px;
+        }
+        .search-group input {
+            flex: 1;
+            background: #0d1117;
+            border: 1px solid #30363d;
+            color: #e6edf3;
+            padding: 8px 12px;
+            font-family: inherit;
+            font-size: 13px;
+            border-radius: 6px;
+            outline: none;
+        }
+        .search-group input:focus { border-color: #3fb950; }
+        .format-buttons { display: flex; gap: 8px; margin-top: 8px; }
+        .format-btn {
+            background: #21262d;
+            color: #8b949e;
+            border: 1px solid #30363d;
+            padding: 6px 12px;
+            font-size: 12px;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        .format-btn:hover, .format-btn.active {
+            background: #30363d;
+            color: #e6edf3;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h2>Log Parser</h2>
+        
+        <div class="box">
+            <p style="color: #8b949e; margin-bottom: 12px;">
+                Paste log content below. Supports common formats: Syslog, Apache, Nginx, JSON, Windows Event.
+            </p>
+            <textarea id="input" placeholder="Paste logs here...
+
+Example formats:
+[2024-01-15 10:30:45] ERROR: Connection failed
+2024-01-15 10:30:45 [ERROR] Database timeout
+{&quot;level&quot;: &quot;error&quot;, &quot;message&quot;: &quot;Login failed&quot;}"></textarea>
+            
+            <div class="format-buttons">
+                <span style="color: #8b949e; font-size: 12px;">Sample:</span>
+                <button class="format-btn" onclick="loadSample('syslog')">Syslog</button>
+                <button class="format-btn" onclick="loadSample('apache')">Apache</button>
+                <button class="format-btn" onclick="loadSample('json')">JSON</button>
+                <button class="format-btn" onclick="loadSample('windows')">Windows</button>
+            </div>
+
+            <div class="controls">
+                <button onclick="parseLogs()">Parse Logs</button>
+                <button class="secondary" onclick="clearAll()">Clear</button>
+            </div>
+        </div>
+
+        <div id="stats-box" class="box" style="display: none;">
+            <div class="stats">
+                <div class="stat">
+                    <div class="stat-label">Total Lines</div>
+                    <div class="stat-value" id="stat-total">0</div>
+                </div>
+                <div class="stat">
+                    <div class="stat-label">Errors</div>
+                    <div class="stat-value error" id="stat-errors">0</div>
+                </div>
+                <div class="stat">
+                    <div class="stat-label">Warnings</div>
+                    <div class="stat-value warning" id="stat-warnings">0</div>
+                </div>
+                <div class="stat">
+                    <div class="stat-label">Info</div>
+                    <div class="stat-value info" id="stat-info">0</div>
+                </div>
+            </div>
+            
+            <div class="search-group">
+                <input type="text" id="search" placeholder="Search logs..." oninput="filterLogs()">
+            </div>
+            
+            <div id="output" class="output"></div>
+        </div>
+    </div>
+
+    <script>
+        let parsedLines = [];
+        const errorPatterns = [/error/i, /fatal/i, /exception/i, /fail/i, /critical/i, /crash/i, /denied/i, /refused/i];
+        const warningPatterns = [/warn/i, /warning/i, /caution/i, /slow/i, /retry/i, /timeout/i];
+        const infoPatterns = [/info/i, /notice/i, /request/i, /connect/i, /start/i, /stop/i];
+        const successPatterns = [/success/i, /ok/i, /connected/i, /complete/i, /done/i];
+
+        function loadSample(format) {
+            const samples = {
+                syslog: `Jan 15 08:00:01 server1 sshd[1234]: Accepted publickey for admin from 192.168.1.50
+Jan 15 08:15:23 server1 kernel: WARNING: CPU temperature above threshold
+Jan 15 08:30:45 server1 nginx[5678]: ERROR: upstream timed out
+Jan 15 08:45:12 server1 systemd[1]: Started Session 45 of user admin
+Jan 15 09:00:00 server1 sshd[1234]: ERROR: maximum authentication attempts exceeded
+Jan 15 09:15:33 server1 nginx[5678]: 2024/01/15 09:15:33 [error] upstream prematurely closed connection
+Jan 15 09:30:00 server1 cron[890]: INFO: (root) CMD (/usr/local/bin/backup.sh)
+Jan 15 09:45:15 server1 kernel: ERROR: Out of memory: Kill process 9876
+Jan 15 10:00:00 server1 nginx[5678]: INFO: 200 GET /api/status 0.023s`,
+                apache: `192.168.1.50 - - [15/Jan/2024:08:00:01 +0000] "GET / HTTP/1.1" 200 1234
+192.168.1.51 - - [15/Jan/2024:08:15:23 +0000] "GET /admin HTTP/1.1" 403 512
+192.168.1.50 - - [15/Jan/2024:08:30:45 +0000] "POST /api/login HTTP/1.1" 401 128
+192.168.1.52 - - [15/Jan/2024:08:45:12 +0000] "GET /static/logo.png HTTP/1.1" 304 0
+192.168.1.50 - - [15/Jan/2024:09:00:00 +0000] "GET /nonexistent HTTP/1.1" 404 1024
+192.168.1.53 - - [15/Jan/2024:09:15:33 +0000] "GET /api/users HTTP/1.1" 500 234
+192.168.1.50 - - [15/Jan/2024:09:30:00 +0000] "POST /api/data HTTP/1.1" 200 456
+192.168.1.51 - - [15/Jan/2024:09:45:15 +0000] ERROR: Database connection pool exhausted
+192.168.1.54 - - [15/Jan/2024:10:00:00 +0000] "GET /api/health HTTP/1.1" 200 64`,
+                json: `{"timestamp":"2024-01-15T08:00:00Z","level":"info","message":"Server started"}
+{"timestamp":"2024-01-15T08:15:00Z","level":"warning","message":"High memory usage detected: 85%"}
+{"timestamp":"2024-01-15T08:30:00Z","level":"error","message":"Failed to connect to database"}
+{"timestamp":"2024-01-15T08:45:00Z","level":"info","message":"User login successful: admin@example.com"}
+{"timestamp":"2024-01-15T09:00:00Z","level":"error","message":"API rate limit exceeded for IP 192.168.1.50"}
+{"timestamp":"2024-01-15T09:15:00Z","level":"warning","message":"Slow query detected: 2.5s"}
+{"timestamp":"2024-01-15T09:30:00Z","level":"info","message":"Cache cleared successfully"}
+{"timestamp":"2024-01-15T09:45:00Z","level":"critical","message":"Disk space critical: 95% full"}
+{"timestamp":"2024-01-15T10:00:00Z","level":"info","message":"Backup completed successfully"}`,
+                windows: `[2024-01-15 08:00:01] Information [Source: Security] User login successful
+[2024-01-15 08:15:23] Warning [Source: Application] Application hang: iexplore.exe
+[2024-01-15 08:30:45] Error [Source: System] The DNS server is not responding
+[2024-01-15 08:45:12] Information [Source: Security] Audit success: User logout
+[2024-01-15 09:00:00] Error [Source: Application] Runtime error: Stack overflow
+[2024-01-15 09:15:33] Warning [Source: System] Driver load failed: printer driver
+[2024-01-15 09:30:00] Information [Source: Application] Service started: World Wide Web
+[2024-01-15 09:45:15] Error [Source: Security] Logon failure: Unknown user or bad password
+[2024-01-15 10:00:00] Information [Source: System] System startup`
+            };
+            document.getElementById('input').value = samples[format];
+        }
+
+        function classifyLine(line) {
+            if (errorPatterns.some(p => p.test(line))) return 'error';
+            if (warningPatterns.some(p => p.test(line))) return 'warning';
+            if (infoPatterns.some(p => p.test(line))) return 'info';
+            if (successPatterns.some(p => p.test(line))) return 'success';
+            return 'debug';
+        }
+
+        function parseLogs() {
+            const input = document.getElementById('input').value.trim();
+            if (!input) return;
+
+            const lines = input.split('\n');
+            parsedLines = lines.map((line, idx) => ({
+                line,
+                index: idx + 1,
+                type: classifyLine(line)
+            }));
+
+            const stats = {
+                total: parsedLines.length,
+                errors: parsedLines.filter(l => l.type === 'error').length,
+                warnings: parsedLines.filter(l => l.type === 'warning').length,
+                info: parsedLines.filter(l => l.type === 'info' || l.type === 'success').length
+            };
+
+            document.getElementById('stat-total').textContent = stats.total;
+            document.getElementById('stat-errors').textContent = stats.errors;
+            document.getElementById('stat-warnings').textContent = stats.warnings;
+            document.getElementById('stat-info').textContent = stats.info;
+            document.getElementById('stats-box').style.display = 'block';
+
+            renderLogs(parsedLines);
+        }
+
+        function filterLogs() {
+            const search = document.getElementById('search').value.toLowerCase();
+            if (!search) {
+                renderLogs(parsedLines);
+                return;
+            }
+            const filtered = parsedLines.filter(l => l.line.toLowerCase().includes(search));
+            renderLogs(filtered);
+        }
+
+        function renderLogs(lines) {
+            const output = document.getElementById('output');
+            output.innerHTML = lines.map(l => 
+                `<div class="log-line ${l.type}"><span class="line-num">${String(l.index).padStart(4, ' ')}</span>${escapeHtml(l.line)}</div>`
+            ).join('');
+        }
+
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
+        function clearAll() {
+            document.getElementById('input').value = '';
+            document.getElementById('search').value = '';
+            document.getElementById('stats-box').style.display = 'none';
+            document.getElementById('output').innerHTML = '';
+            parsedLines = [];
+        }
+    </script>
+</body>
+</html>

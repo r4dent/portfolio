@@ -1,0 +1,382 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Network Diagram Generator</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            background: #0d1117;
+            color: #e6edf3;
+            font-family: 'Cascadia Code', 'Consolas', monospace;
+            min-height: 100vh;
+            padding: 20px;
+        }
+        .container { max-width: 1000px; margin: 0 auto; }
+        h2 { color: #3fb950; margin-bottom: 20px; }
+        .grid { display: grid; grid-template-columns: 300px 1fr; gap: 16px; }
+        .box {
+            background: #161b22;
+            border: 1px solid #30363d;
+            border-radius: 6px;
+            padding: 16px;
+        }
+        label {
+            display: block;
+            color: #8b949e;
+            font-size: 12px;
+            margin-bottom: 6px;
+        }
+        input, select {
+            width: 100%;
+            background: #0d1117;
+            border: 1px solid #30363d;
+            color: #e6edf3;
+            padding: 8px 12px;
+            font-family: inherit;
+            font-size: 13px;
+            border-radius: 6px;
+            margin-bottom: 12px;
+            outline: none;
+        }
+        input:focus, select:focus { border-color: #3fb950; }
+        button {
+            background: #238636;
+            color: #fff;
+            border: none;
+            padding: 10px 20px;
+            font-family: inherit;
+            font-size: 14px;
+            border-radius: 6px;
+            cursor: pointer;
+            width: 100%;
+        }
+        button:hover { background: #2ea043; }
+        button.secondary {
+            background: #30363d;
+            margin-top: 8px;
+        }
+        button.secondary:hover { background: #484f58; }
+        .canvas-container {
+            background: #0d1117;
+            border: 1px solid #30363d;
+            border-radius: 6px;
+            padding: 16px;
+            overflow: auto;
+            min-height: 400px;
+        }
+        canvas {
+            display: block;
+        }
+        .presets {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+        }
+        .preset-btn {
+            background: #21262d;
+            color: #e6edf3;
+            border: 1px solid #30363d;
+            padding: 8px 12px;
+            font-size: 12px;
+            border-radius: 4px;
+            cursor: pointer;
+            text-align: left;
+        }
+        .preset-btn:hover {
+            background: #30363d;
+            border-color: #3fb950;
+        }
+        .legend {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 16px;
+            margin-top: 12px;
+            padding: 12px;
+            background: #0d1117;
+            border-radius: 4px;
+        }
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 12px;
+        }
+        .legend-box {
+            width: 20px;
+            height: 20px;
+            border-radius: 3px;
+        }
+        .legend-box.firewall { background: #f85149; }
+        .legend-box.router { background: #58a6ff; }
+        .legend-box.switch { background: #3fb950; }
+        .legend-box.server { background: #d29922; }
+        .legend-box.workstation { background: #8b949e; }
+        .legend-box.internet { background: #a371f7; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h2>Network Diagram Generator</h2>
+        
+        <div class="grid">
+            <div class="box">
+                <label>Quick Presets</label>
+                <div class="presets">
+                    <button class="preset-btn" onclick="loadPreset('home')">Home Network</button>
+                    <button class="preset-btn" onclick="loadPreset('office')">Small Office</button>
+                    <button class="preset-btn" onclick="loadPreset('dmz')">DMZ Setup</button>
+                    <button class="preset-btn" onclick="loadPreset('vlan')">VLAN Structure</button>
+                </div>
+
+                <div style="margin-top: 20px;">
+                    <label>Custom Elements</label>
+                    <select id="deviceType">
+                        <option value="router">Router</option>
+                        <option value="firewall">Firewall</option>
+                        <option value="switch">Switch</option>
+                        <option value="server">Server</option>
+                        <option value="workstation">Workstation</option>
+                        <option value="internet">Internet Cloud</option>
+                    </select>
+                    <input type="text" id="deviceName" placeholder="Device name (e.g. Web Server)">
+                    <input type="text" id="deviceIp" placeholder="IP address (optional)">
+                    <button onclick="addDevice()">Add Device</button>
+                    <button class="secondary" onclick="clearCanvas()">Clear All</button>
+                </div>
+
+                <div class="legend">
+                    <div class="legend-item">
+                        <div class="legend-box firewall"></div>
+                        <span>Firewall</span>
+                    </div>
+                    <div class="legend-item">
+                        <div class="legend-box router"></div>
+                        <span>Router</span>
+                    </div>
+                    <div class="legend-item">
+                        <div class="legend-box switch"></div>
+                        <span>Switch</span>
+                    </div>
+                    <div class="legend-item">
+                        <div class="legend-box server"></div>
+                        <span>Server</span>
+                    </div>
+                    <div class="legend-item">
+                        <div class="legend-box workstation"></div>
+                        <span>Workstation</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="box canvas-container">
+                <canvas id="canvas" width="600" height="400"></canvas>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const canvas = document.getElementById('canvas');
+        const ctx = canvas.getContext('2d');
+        let devices = [];
+        let connections = [];
+        let selectedDevice = null;
+        let dragging = false;
+        let dragOffset = { x: 0, y: 0 };
+
+        const deviceColors = {
+            router: '#58a6ff',
+            firewall: '#f85149',
+            switch: '#3fb950',
+            server: '#d29922',
+            workstation: '#8b949e',
+            internet: '#a371f7'
+        };
+
+        const deviceIcons = {
+            router: '🌐',
+            firewall: '🔥',
+            switch: '🔌',
+            server: '🖥️',
+            workstation: '💻',
+            internet: '☁️'
+        };
+
+        function draw() {
+            ctx.fillStyle = '#0d1117';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            
+            connections.forEach(conn => {
+                const from = devices.find(d => d.id === conn.from);
+                const to = devices.find(d => d.id === conn.to);
+                if (from && to) {
+                    drawConnection(from, to);
+                }
+            });
+
+            devices.forEach(d => drawDevice(d));
+        }
+
+        function drawDevice(device) {
+            const { x, y, type, name, ip } = device;
+            const color = deviceColors[type];
+            
+            ctx.strokeStyle = selectedDevice === device.id ? '#fff' : color;
+            ctx.lineWidth = selectedDevice === device.id ? 3 : 2;
+            ctx.fillStyle = '#161b22';
+            ctx.beginPath();
+            ctx.roundRect(x - 50, y - 30, 100, 60, 8);
+            ctx.fill();
+            ctx.stroke();
+
+            ctx.fillStyle = color;
+            ctx.font = '24px sans-serif';
+            ctx.textAlign = 'center';
+            ctx.fillText(deviceIcons[type], x, y + 8);
+
+            ctx.fillStyle = '#e6edf3';
+            ctx.font = '11px Courier New';
+            ctx.fillText(name, x, y + 22);
+
+            if (ip) {
+                ctx.fillStyle = '#8b949e';
+                ctx.font = '10px Courier New';
+                ctx.fillText(ip, x, y + 34);
+            }
+        }
+
+        function drawConnection(from, to) {
+            ctx.strokeStyle = '#30363d';
+            ctx.lineWidth = 2;
+            ctx.setLineDash([5, 5]);
+            ctx.beginPath();
+            ctx.moveTo(from.x, from.y + 30);
+            ctx.lineTo(to.x, to.y - 30);
+            ctx.stroke();
+            ctx.setLineDash([]);
+        }
+
+        function getDeviceAt(mx, my) {
+            return devices.find(d => 
+                mx >= d.x - 50 && mx <= d.x + 50 &&
+                my >= d.y - 30 && my <= d.y + 30
+            );
+        }
+
+        function addDevice() {
+            const type = document.getElementById('deviceType').value;
+            const name = document.getElementById('deviceName').value || type.charAt(0).toUpperCase() + type.slice(1);
+            const ip = document.getElementById('deviceIp').value;
+
+            const cols = Math.floor(canvas.width / 120);
+            const rows = Math.floor(canvas.height / 80);
+            const existingCount = devices.filter(d => d.type === type).length;
+            const col = existingCount % cols;
+            const row = Math.floor(existingCount / cols);
+
+            const x = 80 + col * 120;
+            const y = 60 + row * 80;
+
+            devices.push({ id: Date.now(), type, name, ip, x, y });
+            document.getElementById('deviceName').value = '';
+            document.getElementById('deviceIp').value = '';
+            draw();
+        }
+
+        function loadPreset(preset) {
+            devices = [];
+            connections = [];
+            
+            const presets = {
+                home: [
+                    { type: 'internet', name: 'Internet', ip: '', x: 300, y: 40 },
+                    { type: 'router', name: 'Home Router', ip: '192.168.1.1', x: 300, y: 120 },
+                    { type: 'switch', name: 'Local Switch', ip: '', x: 300, y: 200 },
+                    { type: 'workstation', name: 'PC', ip: '192.168.1.100', x: 180, y: 300 },
+                    { type: 'workstation', name: 'Laptop', ip: '192.168.1.101', x: 300, y: 300 },
+                    { type: 'server', name: 'NAS', ip: '192.168.1.200', x: 420, y: 300 }
+                ],
+                office: [
+                    { type: 'internet', name: 'Internet', ip: '', x: 300, y: 40 },
+                    { type: 'firewall', name: 'Firewall', ip: '203.0.113.1', x: 300, y: 120 },
+                    { type: 'router', name: 'Core Router', ip: '10.0.0.1', x: 300, y: 200 },
+                    { type: 'switch', name: 'Access Switch', ip: '', x: 150, y: 280 },
+                    { type: 'switch', name: 'Server Switch', ip: '', x: 450, y: 280 },
+                    { type: 'server', name: 'DC01', ip: '10.0.1.10', x: 450, y: 360 },
+                    { type: 'server', name: 'File Server', ip: '10.0.1.20', x: 450, y: 420 },
+                    { type: 'workstation', name: 'Workstation 1', ip: '10.0.2.10', x: 90, y: 360 },
+                    { type: 'workstation', name: 'Workstation 2', ip: '10.0.2.11', x: 210, y: 360 }
+                ],
+                dmz: [
+                    { type: 'internet', name: 'Internet', ip: '', x: 300, y: 40 },
+                    { type: 'firewall', name: 'Perimeter FW', ip: '', x: 300, y: 120 },
+                    { type: 'switch', name: 'DMZ Switch', ip: '', x: 300, y: 200 },
+                    { type: 'server', name: 'Web Server', ip: '', x: 180, y: 280 },
+                    { type: 'server', name: 'Mail Server', ip: '', x: 300, y: 280 },
+                    { type: 'server', name: 'DNS Server', ip: '', x: 420, y: 280 },
+                    { type: 'firewall', name: 'Internal FW', ip: '', x: 300, y: 360 },
+                    { type: 'switch', name: 'Internal Switch', ip: '', x: 300, y: 420 },
+                    { type: 'server', name: 'DB Server', ip: '', x: 300, y: 500 }
+                ],
+                vlan: [
+                    { type: 'router', name: 'Core Router', ip: '10.0.0.1', x: 300, y: 80 },
+                    { type: 'switch', name: 'VLAN 10 (Servers)', ip: '', x: 150, y: 180 },
+                    { type: 'switch', name: 'VLAN 20 (Users)', ip: '', x: 300, y: 180 },
+                    { type: 'switch', name: 'VLAN 30 (Guest)', ip: '', x: 450, y: 180 },
+                    { type: 'server', name: 'Server 1', ip: '10.10.0.10', x: 100, y: 280 },
+                    { type: 'server', name: 'Server 2', ip: '10.10.0.11', x: 200, y: 280 },
+                    { type: 'workstation', name: 'PC 1', ip: '10.20.0.10', x: 250, y: 280 },
+                    { type: 'workstation', name: 'PC 2', ip: '10.20.0.11', x: 350, y: 280 },
+                    { type: 'workstation', name: 'Guest 1', ip: '10.30.0.10', x: 400, y: 280 },
+                    { type: 'workstation', name: 'Guest 2', ip: '10.30.0.11', x: 500, y: 280 }
+                ]
+            };
+
+            devices = presets[preset].map(d => ({ ...d, id: Date.now() + Math.random() }));
+            draw();
+        }
+
+        function clearCanvas() {
+            devices = [];
+            connections = [];
+            draw();
+        }
+
+        canvas.addEventListener('mousedown', (e) => {
+            const rect = canvas.getBoundingClientRect();
+            const mx = e.clientX - rect.left;
+            const my = e.clientY - rect.top;
+            const device = getDeviceAt(mx, my);
+            if (device) {
+                selectedDevice = device.id;
+                dragging = true;
+                dragOffset = { x: mx - device.x, y: my - device.y };
+            } else {
+                selectedDevice = null;
+            }
+            draw();
+        });
+
+        canvas.addEventListener('mousemove', (e) => {
+            if (dragging) {
+                const rect = canvas.getBoundingClientRect();
+                const mx = e.clientX - rect.left;
+                const my = e.clientY - rect.top;
+                const device = devices.find(d => d.id === selectedDevice);
+                if (device) {
+                    device.x = Math.max(60, Math.min(canvas.width - 60, mx - dragOffset.x));
+                    device.y = Math.max(40, Math.min(canvas.height - 40, my - dragOffset.y));
+                    draw();
+                }
+            }
+        });
+
+        canvas.addEventListener('mouseup', () => {
+            dragging = false;
+        });
+
+        draw();
+    </script>
+</body>
+</html>
