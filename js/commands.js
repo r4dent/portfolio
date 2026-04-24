@@ -82,6 +82,46 @@ const TOOLS = {
         description: 'Case converter',
         category: 'utilities'
     },
+    'disk-info': {
+        type: 'cli',
+        description: 'Common directory paths',
+        category: 'utilities'
+    },
+    'ports': {
+        type: 'cli',
+        description: 'List well-known ports',
+        category: 'utilities'
+    },
+    'ascii-table': {
+        type: 'cli',
+        description: 'ASCII character table',
+        category: 'utilities'
+    },
+    'env-info': {
+        type: 'cli',
+        description: 'Browser environment info',
+        category: 'utilities'
+    },
+    'whoami-info': {
+        type: 'cli',
+        description: 'Current user info',
+        category: 'utilities'
+    },
+    'ip-info': {
+        type: 'cli',
+        description: 'Network information',
+        category: 'utilities'
+    },
+    'error-codes': {
+        type: 'cli',
+        description: 'Windows/HTTP error codes',
+        category: 'utilities'
+    },
+    'service-list': {
+        type: 'cli',
+        description: 'Common services reference',
+        category: 'utilities'
+    },
 
     // Browser-only tools
     'ssl-check': {
@@ -532,6 +572,30 @@ window.commands = {
                     break;
                 case 'case-convert':
                     runCaseConvert(toolArgs);
+                    break;
+                case 'disk-info':
+                    runDiskInfo(toolArgs);
+                    break;
+                case 'ports':
+                    runPorts(toolArgs);
+                    break;
+                case 'ascii-table':
+                    runAsciiTable(toolArgs);
+                    break;
+                case 'env-info':
+                    runEnvInfo(toolArgs);
+                    break;
+                case 'whoami-info':
+                    runWhoamiInfo(toolArgs);
+                    break;
+                case 'ip-info':
+                    runIpInfo(toolArgs);
+                    break;
+                case 'error-codes':
+                    runErrorCodes(toolArgs);
+                    break;
+                case 'service-list':
+                    runServiceList(toolArgs);
                     break;
                 default:
                     terminal.print(`Tool not implemented: ${toolName}`, 'error');
