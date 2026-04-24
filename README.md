@@ -34,7 +34,6 @@ Visit: **[r4dent.github.io/portfolio](https://r4dent.github.io/portfolio)**
 | `contact` | Contact information |
 | `cv` | Interactive CV |
 | `privacy` | Why no social media |
-| `subnet` | Subnet calculator (CLI tool) |
 
 ### CV System
 Full interactive CV with commands:
@@ -45,12 +44,48 @@ Full interactive CV with commands:
 - `cv skills` - Technical skills
 - `cv projects` - Projects
 
-### Built-in Utilities
-- **Subnet Calculator** - Run with `run subnet 192.168.1.0/24`
-- **SSL Certificate Checker** - In tools/
-- **Network Diagram Generator** - In tools/
-- **IT Inventory Tracker** - In tools/
-- **Log Parser** - In tools/
+### CLI Tools
+Run tools with `run [tool-name] [args]`
+
+**Network Tools:**
+| Tool | Description | Usage |
+|------|-------------|-------|
+| `subnet` | Subnet calculator | `run subnet 192.168.1.0/24` |
+
+**Security Tools:**
+| Tool | Description | Usage |
+|------|-------------|-------|
+| `password-gen` | Password generator | `run password-gen 16` |
+
+**Utility Tools:**
+| Tool | Description | Usage |
+|------|-------------|-------|
+| `text-stats` | Text statistics | `run text-stats Hello World` |
+| `random` | Random number/uuid | `run random 1 100` or `run random uuid` |
+| `base64` | Base64 encode/decode | `run base64 encode Hello` |
+| `json-format` | JSON formatter | `run json-format {"name":"test"}` |
+| `url-encode` | URL encode/decode | `run url-encode encode Hello World` |
+| `hex-convert` | Hex/dec/bin converter | `run hex-convert 255` |
+| `timestamp` | Timestamp converter | `run timestamp 1704067200` |
+| `case-convert` | Case converter | `run case-convert upper hello` |
+| `disk-info` | Common directory paths | `run disk-info` |
+| `ports` | List well-known ports | `run ports ssh` |
+| `ascii-table` | ASCII character table | `run ascii-table 48 57` |
+| `env-info` | Browser environment info | `run env-info` |
+| `whoami-info` | Current user info | `run whoami-info` |
+| `ip-info` | Network information | `run ip-info` |
+| `error-codes` | Windows/HTTP error codes | `run error-codes 0x80070005` |
+| `service-list` | Common services reference | `run service-list network` |
+| `csv-format` | CSV formatter | `run csv-format "name,age" "John,30"` |
+| `log-parse` | Log file parser | `run log-parse apache "192.168.1.1 - - [10/Jan] GET / 200"` |
+| `xml-validate` | XML validator | `run xml-validate "<tag>value</tag>"` |
+
+### Browser Tools
+Open in new tab with `run [tool] --window`:
+- SSL Certificate Checker
+- Network Diagram Generator
+- IT Inventory Tracker
+- Log Parser
 
 ## Tech Stack
 
@@ -72,14 +107,36 @@ portfolio/
 │   └── style.css      # Terminal styling
 ├── js/
 │   ├── terminal.js    # Terminal emulator core
-│   ├── commands.js   # Portfolio commands & tools config
-│   └── cv-data.js   # CV data & display
-├── tools/            # Standalone utility tools
+│   ├── commands.js     # Portfolio commands & tools config
+│   ├── cv-data.js      # CV data & display
+│   └── tools/          # CLI tool implementations
+│       ├── subnet.js
+│       ├── password-gen.js
+│       ├── text-stats.js
+│       ├── random.js
+│       ├── base64.js
+│       ├── json-format.js
+│       ├── url-encode.js
+│       ├── hex-convert.js
+│       ├── timestamp.js
+│       ├── case-convert.js
+│       ├── disk-info.js
+│       ├── ports.js
+│       ├── ascii-table.js
+│       ├── env-info.js
+│       ├── whoami-info.js
+│       ├── ip-info.js
+│       ├── error-codes.js
+│       ├── service-list.js
+│       ├── csv-format.js
+│       ├── log-parse.js
+│       └── xml-validate.js
+├── tools/              # Browser-based tools
 │   ├── ssl-check.html
 │   ├── network-diagram.html
 │   ├── it-inventory.html
 │   └── log-parser.html
-└── assets/          # Images, fonts, etc.
+└── assets/             # Images, fonts, etc.
 ```
 
 ## Development
@@ -95,22 +152,30 @@ npx serve .
 
 Then visit: http://localhost:8000
 
-### Adding New Commands
-Add to `window.commands` in `js/commands.js`:
-
+### Adding New CLI Tools
+1. Create new file in `js/tools/`:
 ```javascript
-myCommand(args) {
-    terminal.print('My output', 'text');
-},
+// js/tools/my-tool.js
+function runMyTool(args) {
+    terminal.print('My Tool Output', 'section');
+    // Tool logic here
+}
+```
 
-// Add to TOOLS config for tab completion
-const TOOLS = {
-    'my-tool': {
-        url: '/tools/my-tool.html',
-        description: 'My tool description',
-        category: 'network'
-    }
-};
+2. Add to TOOLS config in `js/commands.js`:
+```javascript
+'my-tool': {
+    type: 'cli',
+    description: 'My tool description',
+    category: 'utilities'
+}
+```
+
+3. Add case to run switch in `js/commands.js`:
+```javascript
+case 'my-tool':
+    runMyTool(toolArgs);
+    break;
 ```
 
 ### Adding CV Data
