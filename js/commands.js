@@ -122,6 +122,21 @@ const TOOLS = {
         description: 'Common services reference',
         category: 'utilities'
     },
+    'csv-format': {
+        type: 'cli',
+        description: 'CSV formatter',
+        category: 'utilities'
+    },
+    'log-parse': {
+        type: 'cli',
+        description: 'Log file parser',
+        category: 'utilities'
+    },
+    'xml-validate': {
+        type: 'cli',
+        description: 'XML validator',
+        category: 'utilities'
+    },
 
     // Browser-only tools
     'ssl-check': {
@@ -596,6 +611,15 @@ window.commands = {
                     break;
                 case 'service-list':
                     runServiceList(toolArgs);
+                    break;
+                case 'csv-format':
+                    runCsvFormat(toolArgs);
+                    break;
+                case 'log-parse':
+                    runLogParse(toolArgs);
+                    break;
+                case 'xml-validate':
+                    runXmlValidate(toolArgs);
                     break;
                 default:
                     terminal.print(`Tool not implemented: ${toolName}`, 'error');
