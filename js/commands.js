@@ -33,40 +33,62 @@ const TOOLS = {
         description: 'Subnet calculator',
         category: 'network'
     },
-    'ip-locator': {
-        url: '/tools/ip-locator.html',
-        description: 'IP geolocation',
-        category: 'network'
-    },
-    'ping': {
-        url: '/tools/ping.html',
-        description: 'Ping tool',
-        category: 'network'
-    },
-    'dns-lookup': {
-        url: '/tools/dns-lookup.html',
-        description: 'DNS lookup',
-        category: 'network'
-    },
 
     // Security tools
     'password-gen': {
-        url: '/tools/password-gen.html',
+        type: 'cli',
         description: 'Password generator',
         category: 'security'
     },
+
+    // Utility tools
+    'text-stats': {
+        type: 'cli',
+        description: 'Text statistics',
+        category: 'utilities'
+    },
+    'random': {
+        type: 'cli',
+        description: 'Random number/uuid',
+        category: 'utilities'
+    },
+    'base64': {
+        type: 'cli',
+        description: 'Base64 encode/decode',
+        category: 'utilities'
+    },
+    'json-format': {
+        type: 'cli',
+        description: 'JSON formatter',
+        category: 'utilities'
+    },
+    'url-encode': {
+        type: 'cli',
+        description: 'URL encode/decode',
+        category: 'utilities'
+    },
+    'hex-convert': {
+        type: 'cli',
+        description: 'Hex/dec/bin converter',
+        category: 'utilities'
+    },
+    'timestamp': {
+        type: 'cli',
+        description: 'Timestamp converter',
+        category: 'utilities'
+    },
+    'case-convert': {
+        type: 'cli',
+        description: 'Case converter',
+        category: 'utilities'
+    },
+
+    // Browser-only tools
     'ssl-check': {
         url: '/tools/ssl-check.html',
         description: 'SSL certificate',
         category: 'security'
     },
-    'hash-gen': {
-        url: '/tools/hash-gen.html',
-        description: 'Hash generator',
-        category: 'security'
-    },
-
-    // Utility tools
     'log-parser': {
         url: '/tools/log-parser.html',
         description: 'Log parser',
@@ -479,7 +501,41 @@ window.commands = {
         }
 
         if (tool.type === 'cli') {
-            this._runSubnet(toolArgs);
+            // Call CLI tool function
+            switch(toolName) {
+                case 'subnet':
+                    runSubnet(toolArgs);
+                    break;
+                case 'password-gen':
+                    runPasswordGen(toolArgs);
+                    break;
+                case 'text-stats':
+                    runTextStats(toolArgs);
+                    break;
+                case 'random':
+                    runRandom(toolArgs);
+                    break;
+                case 'base64':
+                    runBase64(toolArgs);
+                    break;
+                case 'json-format':
+                    runJsonFormat(toolArgs);
+                    break;
+                case 'url-encode':
+                    runUrlEncode(toolArgs);
+                    break;
+                case 'hex-convert':
+                    runHexConvert(toolArgs);
+                    break;
+                case 'timestamp':
+                    runTimestamp(toolArgs);
+                    break;
+                case 'case-convert':
+                    runCaseConvert(toolArgs);
+                    break;
+                default:
+                    terminal.print(`Tool not implemented: ${toolName}`, 'error');
+            }
             return;
         }
 
